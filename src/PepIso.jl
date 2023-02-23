@@ -7,6 +7,16 @@ import MesCore
 include("IPV.jl")
 using .IPV: build_ipv, calc_ipv, ipv_m, ipv_w, ipv_mz
 
+prefilter(ion, spec, ε, V, max_mode=false) = begin
+    f = x -> (x > 0) && !isempty(MesCore.query_ε(spec, IPV.ipv_mz(ion, x, V), ε))
+    if max_mode
+        i = argmax(IPV.ipv_w(ion, V))
+        return f(i) && (f(i + 1) || f(i - 1))
+    else
+        return f(1) && f(2)
+    end
+end
+
 exclude(ions, xs, ms, τ, ε, V) = begin
     map(zip(ions, xs, ms)) do (i, x, m)
         (x <= 0.0 || m <= 0.0) && return false
