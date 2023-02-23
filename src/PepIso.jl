@@ -1,6 +1,7 @@
 module PepIso
 
 import GLPK
+import Graphs
 import JuMP
 import MesCore
 
@@ -147,6 +148,34 @@ deisotope(ions, spec, τ_max, ε, V, evaluator=:LP) = begin
     end
     @label done
     return [(; i.mz, i.z, x, m) for (i, x, m) in zip(ions, xs, ms)]
+end
+
+split_ions(ions, spec, ε, V) = begin
+    items = [(; i, n, mz=IPV.ipv_mz(ion, n, V)) for (i, ion) in enumerate(ions) for n in eachindex(IPV.ipv_w(ion, V))]
+    cs = map(p -> (; p.mz, p.inten, slots=empty(items)), spec)
+    for i in items
+        l, r = searchsortedfirst(spec, (1 - ε) * i.mz), searchsortedlast(spec, (1 + ε) * i.mz)
+        εs = map(p -> abs(i.mz - p.mz), spec[l:r])
+        l <= r && push!(cs[argmin(εs)+l-1].slots, i)
+    end
+    cs = filter(c -> !isempty(c.slots), cs)
+    g = Graphs.SimpleGraph(length(ions))
+    for c in cs
+        a = c.slots[begin]
+        for b in c.slots[begin+1:end]
+            Graphs.add_edge!(g, a.i, b.i)
+        end
+    end
+    coms = Graphs.connected_components(g)
+    tab = zeros(Int, length(ions))
+    for (i, com) in enumerate(coms)
+        tab[com] .= i
+    end
+    slices = map(_ -> MesCore.Peak[], coms)
+    for c in cs
+        push!(slices[tab[c.slots[begin].i]], MesCore.Peak(c.mz, c.inten))
+    end
+    return map(idxs -> ions[idxs], coms), slices
 end
 
 end
