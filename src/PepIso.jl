@@ -4,6 +4,7 @@ import GLPK
 import Graphs
 import JuMP
 import MesCore
+import ProgressMeter: @showprogress
 
 include("IPV.jl")
 using .IPV: build_ipv, calc_ipv, ipv_m, ipv_w, ipv_mz
@@ -176,6 +177,40 @@ split_ions(ions, spec, ε, V) = begin
         push!(slices[tab[c.slots[begin].i]], MesCore.Peak(c.mz, c.inten))
     end
     return map(idxs -> ions[idxs], coms), slices
+end
+
+group_ions(I, gap) = begin
+    G = []
+    z_max = [maximum(map(i -> i.z, ions)) for ions in I if !isempty(ions)] |> maximum
+    z_min = [minimum(map(i -> i.z, ions)) for ions in I if !isempty(ions)] |> minimum
+    for z in z_min:z_max
+        @info "grouping (charge state: $(z))"
+        tmp = []
+        gs = ones(Int, length(tmp))
+        @showprogress for ions in I
+            s = gs .> gap
+            append!(G, tmp[s])
+            tmp, gs = tmp[.!s], gs[.!s]
+            for ion in filter(i -> i.z == z, ions)
+                grouped = false
+                for (j, t) in enumerate(tmp)
+                    if MesCore.in_moe(ion.mz, t[end].mz, ε)
+                        push!(t, ion)
+                        grouped = true
+                        gs[j] = 0
+                        break
+                    end
+                end
+                if !grouped
+                    push!(tmp, [ion])
+                    push!(gs, 0)
+                end
+            end
+            gs .+= 1
+        end
+        append!(G, tmp)
+    end
+    return G
 end
 
 end
