@@ -9,9 +9,9 @@ include("IPV.jl")
 using .IPV: build_ipv, calc_ipv, ipv_m, ipv_w, ipv_mz
 
 prefilter(ion, spec, ε, V, max_mode=false) = begin
-    f = x -> (x > 0) && !isempty(MesCore.query_ε(spec, IPV.ipv_mz(ion, x, V), ε))
+    f = x -> (x > 0) && !isempty(MesCore.query_ε(spec, ipv_mz(ion, x, V), ε))
     if max_mode
-        i = argmax(IPV.ipv_w(ion, V))
+        i = argmax(ipv_w(ion, V))
         return f(i) && (f(i + 1) || f(i - 1))
     else
         return f(1) && f(2)
@@ -151,7 +151,7 @@ deisotope(ions, spec, τ_max, ε, V, evaluator=:LP) = begin
 end
 
 split_ions(ions, spec, ε, V) = begin
-    items = [(; i, n, mz=IPV.ipv_mz(ion, n, V)) for (i, ion) in enumerate(ions) for n in eachindex(IPV.ipv_w(ion, V))]
+    items = [(; i, n, mz=ipv_mz(ion, n, V)) for (i, ion) in enumerate(ions) for n in eachindex(ipv_w(ion, V))]
     cs = map(p -> (; p.mz, p.inten, slots=empty(items)), spec)
     for i in items
         l, r = searchsortedfirst(spec, (1 - ε) * i.mz), searchsortedlast(spec, (1 + ε) * i.mz)
