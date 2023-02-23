@@ -179,7 +179,7 @@ split_ions(ions, spec, ε, V) = begin
     return map(idxs -> ions[idxs], coms), slices
 end
 
-group_ions(I, gap) = begin
+group_ions(I, gap, ε) = begin
     G = []
     z_max = [maximum(map(i -> i.z, ions)) for ions in I if !isempty(ions)] |> maximum
     z_min = [minimum(map(i -> i.z, ions)) for ions in I if !isempty(ions)] |> minimum
